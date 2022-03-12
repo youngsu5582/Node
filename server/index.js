@@ -4,7 +4,6 @@ const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 
 const app = express()
-const port = 3000
 
 const { User } = require('./models/User')
 const {auth} = require('./middleware/auth')
@@ -29,6 +28,9 @@ mongoose.connect( config.mongoURI ,
 
 
 app.get('/',(req,res) => res.send('Hello world'))
+app.get('/api/hello',(req,res)=>{
+    res.send("hihi~")
+})
 
 app.post('/api/users/register',(req,res)=>{
     const user = new User(req.body)
@@ -37,24 +39,22 @@ app.post('/api/users/register',(req,res)=>{
         return res.status(200).json({
             success:true
         })
-    })
+    })  
 })
 
 app.post('/api/users/login',(req,res)=>{
-    
-    User.findOne({email:req.body.email},(err,user)=>{
+    User.findOne({email:req.body.email},{"email":true,"password":true},(err,user)=>{
         if(!user){
             return res.json({
                 loginSuccess : false,
                 message : "해당 Email X"
-
             })
         }
-        user.comparePassword(req.body.password , (err,isMatch)=>{
+    user.comparePassword(req.body.password , (err,isMatch)=>{
             if(!isMatch)
                 return res.json({loginSuccess : false,  message:"비밀번호 틀림"})
-                user.generateToken((err,user)=>{
-                    if(err) return res.status(400).send(err);
+            user.generateToken((err,user)=>{
+                if(err) return res.status(400).send(err);
             res.cookie("x_auth",user.token).status(200)
             .json({loginSuccess:true,userId:user._id})
             })
@@ -66,6 +66,7 @@ app.post('/api/users/login',(req,res)=>{
 
 app.get('/api/users/auth',auth,(req,res)=>{
     //여기까지 왔다는건 middleware auth에서 문제가 없었음
+    
     res.status(200).json({
         _id : req.user._id,
         isAdmin : req.user.role === 0? false : true,
@@ -80,10 +81,11 @@ app.get('/api/users/auth',auth,(req,res)=>{
 app.get('/api/users/logout',auth,(req,res)=>{
     User.findOneAndUpdate({_id:req.user._id},{token:""},(err,user)=>{
         if(err)return res.json({success:false,err});
-        return res.status(200).send({
+            res.status(200).send({
             success:true
         })
     })
 })
+const port = 5000
 
 app.listen(port,()=> console.log(`Example app listening on port ${port}!`))
